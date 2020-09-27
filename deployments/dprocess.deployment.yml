@@ -1,0 +1,61 @@
+apiVersion: v1
+data:
+  dzaimp3.yml: ZGNyYXdsOgogICAgICBhZGRyZXNzOiAiZHphaS1tcDMtY3Jhd2xlci1zZXJ2aWNlOjQwMDEi
+kind: Secret
+metadata:
+  name: dzai-mp3-dprocess-config
+  namespace: default
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dzai-mp3-services
+  labels:
+    app: dzai-mp3-services
+spec:
+  ports:
+    - name: app-grpc
+      port: 3001
+      targetPort: 3001
+  selector:
+    app: dzai-mp3-services
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dzai-mp3-services
+  labels:
+    app: dzai-mp3-services
+spec:
+  replicas: 1
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app: dzai-mp3-services
+  template:
+    metadata:
+      labels:
+        app: dzai-mp3-services
+    spec:
+      volumes:
+        - name: config
+          secret:
+            secretName: dzai-mp3-dprocess-config
+            items:
+              - key: dzaimp3.yml
+                path: dzaimp3.yml
+      containers:
+        - name: dzai-mp3-dprocess-container
+          image: "thaiduong28597/dzai-mp3-dprocess"
+          imagePullPolicy: Always
+          ports:
+            - name: app-grpc
+              containerPort: 3001
+          workingDir: /go/src/app
+          command: ["dprocess", "-config-file", "/etc/dzaimp3/dzaimp3.yml"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/dzaimp3
+      restartPolicy: Always
